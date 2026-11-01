@@ -127,4 +127,37 @@ describe('PlumeOverlay', () => {
     );
     expect(container.querySelector('.plume-canvas')).not.toBeInTheDocument();
   });
+
+  it('crossfades between hours and throttles redraws', () => {
+    const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+    const { rerender } = render(
+      <PlumeOverlay
+        map={map}
+        sources={[source]}
+        hours={hours}
+        hourIndex={1}
+        pollutant="PM2.5"
+        enabled
+      />,
+    );
+
+    act(() => rafCallback?.(1100));
+    rerender(
+      <PlumeOverlay
+        map={map}
+        sources={[source]}
+        hours={hours}
+        hourIndex={2}
+        pollutant="PM2.5"
+        enabled
+      />,
+    );
+    act(() => rafCallback?.(1200));
+    act(() => rafCallback?.(1210));
+    act(() => rafCallback?.(2000));
+    act(() => rafCallback?.(2100));
+
+    expect(context.drawImage).toHaveBeenCalled();
+    nowSpy.mockRestore();
+  });
 });

@@ -8,6 +8,27 @@ import {
 import { POLLUTANTS } from './pollutants';
 
 describe('plume density processing', () => {
+  it('ignores kernels with invalid geometry or weight', () => {
+    const density = new Float32Array(4);
+    splatParticleDensity(density, 2, 2, [
+      { x: 1, y: 1, radius: 0, weight: 1, opacity: 1 },
+      { x: 1, y: 1, radius: 1, weight: 0, opacity: 1 },
+      { x: 1, y: 1, radius: 1, weight: 1, opacity: 0 },
+      { x: Number.NaN, y: 1, radius: 1, weight: 1, opacity: 1 },
+    ]);
+
+    expect(Array.from(density)).toEqual([0, 0, 0, 0]);
+  });
+
+  it('grows the kernel radius with age and clamps its inputs', () => {
+    expect(plumeKernelRadius(0, 0.5)).toBeLessThan(plumeKernelRadius(1, 0.5));
+    expect(plumeKernelRadius(2, 5)).toBe(plumeKernelRadius(1, 1.45));
+  });
+
+  it('copies the field unchanged for a zero blur radius', () => {
+    const source = new Float32Array([0.25, 0.75]);
+    expect(Array.from(blurDensity(source, 2, 1, 0))).toEqual([0.25, 0.75]);
+  });
   it('spreads a density impulse into neighbouring pixels', () => {
     const source = new Float32Array(25);
     source[12] = 1;

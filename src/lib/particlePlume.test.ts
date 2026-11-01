@@ -317,3 +317,42 @@ describe('plume particle simulation', () => {
     expect(turning[0]?.path.at(-1)).not.toEqual(straight[0]?.path.at(-1));
   });
 });
+
+describe('plume simulation guards', () => {
+  it('returns no particles for missing or invalid input', () => {
+    expect(buildPlumeParticles([source], [], 0, 'PM2.5')).toEqual([]);
+    const invalid: HourlyCalc = {
+      time: 'not-a-date',
+      wind: windAt('not-a-date', 0),
+      readings: [],
+    };
+    expect(simulatePlumeParticles(source, [invalid], 0, 'PM2.5', 20)).toEqual([]);
+    expect(simulatePlumeParticles(source, hours, 1, 'PM2.5', 0)).toEqual([]);
+    expect(simulatePlumeParticles(source, hours, 1, 'PM2.5', 20, { historyMinutes: 0 })).toEqual(
+      [],
+    );
+    expect(
+      simulatePlumeParticles(source, hours, 1, 'PM2.5', 20, { particlesPerRelease: 0 }),
+    ).toEqual([]);
+    expect(simulatePlumeParticles(source, hours, 1, 'PM2.5', 20, { stepSeconds: 0 })).toEqual([]);
+  });
+
+  it('treats an empty forecast as calm wind', () => {
+    expect(unwrapWindDirections([])).toEqual([]);
+    const zero = interpolateWind([], Date.UTC(2026, 9, 31));
+    expect(zero.east).toBeCloseTo(0);
+    expect(zero.north).toBeCloseTo(0);
+    expect(zero.stability).toBe('D');
+  });
+
+  it('moves particles even when the wind is calm', () => {
+    const calm = hours.map((item) => hour(item.time, windAt(item.time, 0, 0)));
+    const particles = simulatePlumeParticles(source, calm, 2, 'PM2.5', 20, smallOptions);
+    expect(particles.length).toBeGreaterThan(0);
+  });
+
+  it('keeps retention at full for invalid ages', () => {
+    expect(plumeRetention(Number.NaN)).toBe(1);
+    expect(plumeRetention(-5)).toBe(1);
+  });
+});

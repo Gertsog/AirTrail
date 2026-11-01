@@ -95,7 +95,8 @@ describe('useMapInstance', () => {
       vi.mocked(NavigationControl).mockClear();
       vi.mocked(ScaleControl).mockClear();
       const container = { current: document.createElement('div') } as RefObject<HTMLDivElement>;
-      const { unmount } = renderHook(() => useMapInstance(container, vi.fn(), REGION));
+      const onReady = vi.fn();
+      const { unmount } = renderHook(() => useMapInstance(container, onReady, REGION));
 
       expect(NavigationControl).not.toHaveBeenCalled();
       expect(ScaleControl).toHaveBeenCalled();
@@ -108,5 +109,20 @@ describe('useMapInstance', () => {
         value: original,
       });
     }
+  });
+
+  it('fits the region bounds when the region has no explicit center', () => {
+    const container = { current: document.createElement('div') } as RefObject<HTMLDivElement>;
+    const region = { ...REGION, center: undefined, zoom: undefined };
+    const onReady = vi.fn();
+    const { result } = renderHook(() => useMapInstance(container, onReady, region));
+
+    act(() => mock.styleLoad.current?.());
+
+    expect(result.current.loaded).toBe(true);
+    expect(mock.map.fitBounds).toHaveBeenCalledWith(region.bounds, {
+      padding: 40,
+      duration: 0,
+    });
   });
 });
